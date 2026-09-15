@@ -135,12 +135,12 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     window.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
 
-    // Gentle 20-second heartbeat to ensure zero dropped messages during active viewing
+    // Fast 3-second heartbeat for near-instant message delivery as a WebSocket fallback
     const syncInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         reconcileMessages()
       }
-    }, 20000)
+    }, 3000)
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -151,9 +151,9 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
 
   // Subscribe to real-time incoming Patronuses with stable dependencies
   useEffect(() => {
-    if (!circle?.id || !isOnline) return
+    if (!circleId || !isOnline) return
 
-    const unsubscribe = subscribeToCircleMessages(circle.id, (newMsg) => {
+    const unsubscribe = subscribeToCircleMessages(circleId, (newMsg) => {
       setMessages((prev) => {
         if (prev.some(m => m.id === newMsg.id)) return prev
         const updated = [...prev, newMsg]
@@ -172,13 +172,13 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
 
     return unsubscribe
-  }, [circle?.id, isOnline, showPatronusAlert])
+  }, [circleId, isOnline, showPatronusAlert])
 
   // Subscribe to real-time member events (joins and profile updates)
   useEffect(() => {
-    if (!circle?.id || !isOnline) return
+    if (!circleId || !isOnline) return
 
-    const unsubscribe = subscribeToCircleMembers(circle.id, ({ eventType, member }) => {
+    const unsubscribe = subscribeToCircleMembers(circleId, ({ eventType, member }) => {
       if (eventType === 'UPDATE') {
         setMembers((prev) =>
           prev.map((m) => (m.id === member.id ? { ...m, ...member } : m))
@@ -199,7 +199,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
 
     return unsubscribe
-  }, [circle?.id, isOnline, showPatronusAlert])
+  }, [circleId, isOnline, showPatronusAlert])
 
   // Subscribe to presence tracking
   useEffect(() => {
