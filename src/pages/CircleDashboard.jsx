@@ -3,7 +3,7 @@ import MessageBubble from '../components/messaging/MessageBubble'
 import MessageComposer from '../components/messaging/MessageComposer'
 import MemberList from '../components/circles/MemberList'
 import PatronusButton from '../components/common/PatronusButton'
-import { getMessages, sendPatronus, subscribeToCircleMessages, subscribeToCirclePresence } from '../services/messageService'
+import { getMessages, getRecentMessages, sendPatronus, subscribeToCircleMessages, subscribeToCirclePresence } from '../services/messageService'
 import { getCircleMembers, subscribeToCircleMembers } from '../services/circleService'
 import { isOnlineAvailable } from '../services/supabaseClient'
 import { notificationService } from '../services/notificationService'
@@ -25,7 +25,18 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   const [isSpellbookOpen, setIsSpellbookOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const alertTimeoutRef = useRef(null)
+  const currentUserRef = useRef(currentUser)
+  const messagesRef = useRef(messages)
   const isOnline = isOnlineAvailable()
+
+  // Keep refs synchronized with latest props and state
+  useEffect(() => {
+    currentUserRef.current = currentUser
+  }, [currentUser])
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // In-app floating toast alert
   const showPatronusAlert = useCallback((alertData) => {
@@ -43,15 +54,17 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
   }, [])
 
+  const circleId = circle?.id
+
   // Function to load/reload data from Supabase
   const loadCircleData = useCallback(async () => {
-    if (!circle) return
+    if (!circleId) return
     setIsLoading(true)
     setLoadError('')
     try {
       const [initialMsgs, initialMembers] = await Promise.all([
-        getMessages(circle.id),
-        getCircleMembers(circle.id)
+        getMessages(circleId),
+        getCircleMembers(circleId)
       ])
       setMessages(initialMsgs)
       if (initialMembers.length > 0) {
@@ -63,25 +76,92 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     } finally {
       setIsLoading(false)
     }
-  }, [circle])
+  }, [circleId])
 
-  // Load messages and members on mount
+  // Load messages and members on mount or circle change
   useEffect(() => {
     loadCircleData()
   }, [loadCircleData])
 
-  // Subscribe to real-time incoming Patronuses
+  // Reconcile missed messages (e.g. after phone sleep, background tab, or brief network drop)
+  const reconcileMessages = useCallback(async () => {
+    if (!circleId || !isOnline) return
+    const currentList = messagesRef.current
+    const latestTimestamp = currentList.length > 0 ? currentList[currentList.length - 1].createdAt : null
+
+    try {
+      const recent = await getRecentMessages(circleId, latestTimestamp)
+      if (recent && recent.length > 0) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const trulyNew = recent.filter(m => !existingIds.has(m.id))
+          if (trulyNew.length === 0) return prev
+
+          // Trigger alerts for messages from others
+          trulyNew.forEach(m => {
+            if (m.senderId !== currentUserRef.current?.id) {
+              notificationService.notifyIncomingPatronus(m)
+              showPatronusAlert({
+                title: m.type === 'howler' ? '⚡ HOWLER ALERT' : m.type === 'whisper' ? '🌙 WHISPER RECEIVED' : m.type === 'spell' ? '🪄 SPELL CAST' : '✨ PATRONUS ARRIVED',
+                body: `${m.senderName}: "${m.content}"`,
+                type: m.type || 'standard'
+              })
+            }
+          })
+
+          const merged = [...prev, ...trulyNew]
+          return merged.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        })
+      }
+    } catch (err) {
+      console.warn('Patronus message reconciliation failed:', err)
+    }
+  }, [circleId, isOnline, showPatronusAlert])
+
+  // Sync on tab visibility, window focus, and periodic heartbeat
   useEffect(() => {
-    if (!circle || !isOnline) return
+    if (!circleId || !isOnline) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        reconcileMessages()
+      }
+    }
+
+    const handleFocus = () => {
+      reconcileMessages()
+    }
+
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    // Gentle 20-second heartbeat to ensure zero dropped messages during active viewing
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        reconcileMessages()
+      }
+    }, 20000)
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(syncInterval)
+    }
+  }, [circleId, isOnline, reconcileMessages])
+
+  // Subscribe to real-time incoming Patronuses with stable dependencies
+  useEffect(() => {
+    if (!circle?.id || !isOnline) return
 
     const unsubscribe = subscribeToCircleMessages(circle.id, (newMsg) => {
       setMessages((prev) => {
         if (prev.some(m => m.id === newMsg.id)) return prev
-        return [...prev, newMsg]
+        const updated = [...prev, newMsg]
+        return updated.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
       })
 
       // Sensory feedback & in-app alert for messages from others
-      if (newMsg.senderId !== currentUser?.id) {
+      if (newMsg.senderId !== currentUserRef.current?.id) {
         notificationService.notifyIncomingPatronus(newMsg)
         showPatronusAlert({
           title: newMsg.type === 'howler' ? '⚡ HOWLER ALERT' : newMsg.type === 'whisper' ? '🌙 WHISPER RECEIVED' : newMsg.type === 'spell' ? '🪄 SPELL CAST' : '✨ PATRONUS ARRIVED',
@@ -92,11 +172,11 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
 
     return unsubscribe
-  }, [circle, isOnline, currentUser, showPatronusAlert])
+  }, [circle?.id, isOnline, showPatronusAlert])
 
   // Subscribe to real-time member events (joins and profile updates)
   useEffect(() => {
-    if (!circle || !isOnline) return
+    if (!circle?.id || !isOnline) return
 
     const unsubscribe = subscribeToCircleMembers(circle.id, ({ eventType, member }) => {
       if (eventType === 'UPDATE') {
@@ -119,18 +199,19 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
 
     return unsubscribe
-  }, [circle, isOnline, showPatronusAlert])
+  }, [circle?.id, isOnline, showPatronusAlert])
 
   // Subscribe to presence tracking
   useEffect(() => {
-    if (!circle || !currentUser || !isOnline) return
+    const user = currentUserRef.current
+    if (!circleId || !user || !isOnline) return
 
-    const unsubscribe = subscribeToCirclePresence(circle.id, currentUser, (activeIds) => {
+    const unsubscribe = subscribeToCirclePresence(circleId, user, (activeIds) => {
       setOnlineUserIds(activeIds)
     })
 
     return unsubscribe
-  }, [circle, currentUser, isOnline])
+  }, [circleId, isOnline])
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = useCallback((smooth = true) => {
@@ -204,9 +285,6 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   }
 
   const handleUpdateUserPatronus = (newPatronus) => {
-    if (currentUser) {
-      currentUser.patronus = newPatronus
-    }
     setMembers((prev) =>
       prev.map((m) => (m.id === currentUser?.id ? { ...m, patronus: newPatronus } : m))
     )

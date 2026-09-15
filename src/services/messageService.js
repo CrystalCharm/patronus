@@ -66,6 +66,45 @@ export async function getMessages(circleId) {
 }
 
 /**
+ * Fetch recent messages created after a specific ISO timestamp (for missed event reconciliation)
+ */
+export async function getRecentMessages(circleId, afterTimestamp) {
+  if (isOnlineAvailable()) {
+    let query = supabase
+      .from('messages')
+      .select('*')
+      .eq('circle_id', circleId)
+      .order('created_at', { ascending: true })
+
+    if (afterTimestamp) {
+      query = query.gt('created_at', afterTimestamp)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.warn('Supabase getRecentMessages error:', error)
+      return []
+    }
+
+    return (data || []).map(m => ({
+      id: m.id,
+      circleId: m.circle_id,
+      senderId: m.sender_id,
+      senderName: m.sender_name,
+      content: m.content,
+      type: m.message_type || 'standard',
+      createdAt: m.created_at
+    }))
+  }
+
+  const local = getLocalMessages(circleId)
+  if (!afterTimestamp) return local
+  const afterDate = new Date(afterTimestamp).getTime()
+  return local.filter(m => new Date(m.createdAt).getTime() > afterDate)
+}
+
+/**
  * Cast a new Patronus message and persist directly to Supabase
  */
 export async function sendPatronus({ circleId, senderId, senderName, content, type = 'standard' }) {
@@ -125,45 +164,84 @@ export async function sendPatronus({ circleId, senderId, senderName, content, ty
 }
 
 /**
- * Subscribe to live incoming Patronus messages for a circle in real time
+ * Subscribe to live incoming Patronus messages for a circle in real time.
+ * Uses instance-unique channel names, monitors connection states, and auto-retries on connection drops.
  */
-export function subscribeToCircleMessages(circleId, onNewMessage) {
+export function subscribeToCircleMessages(circleId, onNewMessage, onStatusChange) {
   if (!isOnlineAvailable() || !supabase) {
     return () => {}
   }
 
-  const channelName = `circle-messages-${circleId}`
-  const channel = supabase
-    .channel(channelName)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `circle_id=eq.${circleId}`
-      },
-      (payload) => {
-        const raw = payload.new
-        if (raw) {
-          const formatted = {
-            id: raw.id,
-            circleId: raw.circle_id,
-            senderId: raw.sender_id,
-            senderName: raw.sender_name,
-            content: raw.content,
-            type: raw.message_type || 'standard',
-            createdAt: raw.created_at
+  let activeChannel = null
+  let isClosed = false
+  let retryTimer = null
+  let retryCount = 0
+
+  function createSubscription() {
+    if (isClosed || !supabase) return
+
+    const channelName = `circle-messages-${circleId}-${Math.random().toString(36).slice(2, 7)}`
+    activeChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `circle_id=eq.${circleId}`
+        },
+        (payload) => {
+          const raw = payload.new
+          if (raw) {
+            const formatted = {
+              id: raw.id,
+              circleId: raw.circle_id,
+              senderId: raw.sender_id,
+              senderName: raw.sender_name,
+              content: raw.content,
+              type: raw.message_type || 'standard',
+              createdAt: raw.created_at
+            }
+            saveLocalMessage(formatted)
+            onNewMessage(formatted)
           }
-          saveLocalMessage(formatted)
-          onNewMessage(formatted)
         }
-      }
-    )
-    .subscribe()
+      )
+      .subscribe((status, err) => {
+        if (onStatusChange) {
+          onStatusChange(status)
+        }
+
+        if (status === 'SUBSCRIBED') {
+          retryCount = 0
+        } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+          console.warn(`Patronus channel ${channelName} received ${status}. Attempting reconnection...`, err || '')
+          if (!isClosed) {
+            const delay = Math.min(1500 * Math.pow(1.5, retryCount), 12000)
+            retryCount++
+            clearTimeout(retryTimer)
+            retryTimer = setTimeout(() => {
+              if (activeChannel) {
+                supabase.removeChannel(activeChannel)
+                activeChannel = null
+              }
+              createSubscription()
+            }, delay)
+          }
+        }
+      })
+  }
+
+  createSubscription()
 
   return () => {
-    supabase.removeChannel(channel)
+    isClosed = true
+    clearTimeout(retryTimer)
+    if (activeChannel) {
+      supabase.removeChannel(activeChannel)
+      activeChannel = null
+    }
   }
 }
 

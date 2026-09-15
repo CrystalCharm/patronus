@@ -22,7 +22,9 @@ class NotificationService {
         if (typeof parsed.sound === 'boolean') this.soundEnabled = parsed.sound
         if (typeof parsed.haptics === 'boolean') this.hapticsEnabled = parsed.haptics
       }
-    } catch {}
+    } catch {
+      // ignore storage error
+    }
   }
 
   savePrefs() {
@@ -35,7 +37,9 @@ class NotificationService {
         })
       )
       this.listeners.forEach((cb) => cb({ sound: this.soundEnabled, haptics: this.hapticsEnabled }))
-    } catch {}
+    } catch {
+      // ignore storage error
+    }
   }
 
   onPrefsChange(callback) {

@@ -33,11 +33,11 @@ export default function SpellbookModal({
   const [hapticsEnabled, setHapticsEnabled] = useState(notificationService.hapticsEnabled)
   const [notifPermission, setNotifPermission] = useState(() => notificationService.getPermission())
 
-  useEffect(() => {
-    if (currentUser?.patronus) {
-      setSelectedPatronus(currentUser.patronus)
-    }
-  }, [currentUser])
+  const [prevPatronus, setPrevPatronus] = useState(currentUser?.patronus)
+  if (currentUser?.patronus && currentUser.patronus !== prevPatronus) {
+    setPrevPatronus(currentUser.patronus)
+    setSelectedPatronus(currentUser.patronus)
+  }
 
   useEffect(() => {
     return notificationService.onPrefsChange(({ sound, haptics }) => {
