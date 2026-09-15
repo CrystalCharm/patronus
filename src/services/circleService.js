@@ -1,4 +1,5 @@
 import { INITIAL_CIRCLES } from '../data/mockData'
+import { supabase, isOnlineAvailable } from './supabaseClient'
 
 const STORAGE_KEY_CIRCLES = 'patronus_circles'
 
@@ -15,9 +16,9 @@ export function generateCircleCode() {
 }
 
 /**
- * Get all available circles
+ * Get cached/local circles
  */
-export function getCircles() {
+export function getLocalCircles() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CIRCLES)
     if (!raw) {
@@ -30,10 +31,7 @@ export function getCircles() {
   }
 }
 
-/**
- * Save circles to localStorage
- */
-function saveCircles(circles) {
+function saveLocalCircles(circles) {
   try {
     localStorage.setItem(STORAGE_KEY_CIRCLES, JSON.stringify(circles))
   } catch (err) {
@@ -44,44 +42,121 @@ function saveCircles(circles) {
 /**
  * Retrieve a circle by its unique ID
  */
-export function getCircleById(id) {
-  const circles = getCircles()
+export async function getCircleById(id) {
+  if (isOnlineAvailable()) {
+    try {
+      const { data: circleData, error: circleErr } = await supabase
+        .from('circles')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (!circleErr && circleData) {
+        const { data: memberData } = await supabase
+          .from('circle_members')
+          .select('*')
+          .eq('circle_id', id)
+
+        return {
+          id: circleData.id,
+          name: circleData.name,
+          code: circleData.code,
+          description: circleData.description,
+          keeperId: circleData.keeper_id,
+          keeperName: circleData.keeper_name,
+          createdAt: circleData.created_at,
+          members: (memberData || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            role: m.role,
+            patronus: m.patronus_form,
+            online: true
+          }))
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getCircleById error, falling back to local:', err)
+    }
+  }
+
+  const circles = getLocalCircles()
   return circles.find(c => c.id === id) || null
 }
 
 /**
  * Find a circle by its invite code (case-insensitive)
  */
-export function getCircleByCode(code) {
+export async function getCircleByCode(code) {
   if (!code) return null
   const normalized = code.trim().toUpperCase()
-  const circles = getCircles()
+
+  if (isOnlineAvailable()) {
+    try {
+      const { data: circleData, error: circleErr } = await supabase
+        .from('circles')
+        .select('*')
+        .ilike('code', normalized)
+        .maybeSingle()
+
+      if (!circleErr && circleData) {
+        const { data: memberData } = await supabase
+          .from('circle_members')
+          .select('*')
+          .eq('circle_id', circleData.id)
+
+        return {
+          id: circleData.id,
+          name: circleData.name,
+          code: circleData.code,
+          description: circleData.description,
+          keeperId: circleData.keeper_id,
+          keeperName: circleData.keeper_name,
+          createdAt: circleData.created_at,
+          members: (memberData || []).map(m => ({
+            id: m.id,
+            name: m.name,
+            role: m.role,
+            patronus: m.patronus_form,
+            online: true
+          }))
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getCircleByCode error, falling back to local:', err)
+    }
+  }
+
+  const circles = getLocalCircles()
   return circles.find(c => c.code.toUpperCase() === normalized) || null
 }
 
 /**
  * Create a new Circle and assign the creator as the Circle Keeper
  */
-export function createCircle({ name, description = '', keeperName }) {
+export async function createCircle({ name, description = '', keeperName }) {
   if (!name?.trim()) throw new Error('Circle name is required.')
   if (!keeperName?.trim()) throw new Error('Your wizard name is required.')
 
-  const circles = getCircles()
   const newId = `circle-${Date.now()}`
   const keeperId = `wizard-${Date.now()}`
+  const code = generateCircleCode()
+  const cleanName = name.trim()
+  const cleanKeeper = keeperName.trim()
+  const cleanDesc = description.trim()
+  const createdAt = new Date().toISOString()
 
   const newCircle = {
     id: newId,
-    name: name.trim(),
-    code: generateCircleCode(),
-    description: description.trim(),
-    createdAt: new Date().toISOString(),
+    name: cleanName,
+    code,
+    description: cleanDesc,
+    createdAt,
     keeperId,
-    keeperName: keeperName.trim(),
+    keeperName: cleanKeeper,
     members: [
       {
         id: keeperId,
-        name: keeperName.trim(),
+        name: cleanKeeper,
         role: 'keeper',
         patronus: 'Silver Stag',
         online: true
@@ -89,14 +164,50 @@ export function createCircle({ name, description = '', keeperName }) {
     ]
   }
 
+  // If online backend is configured, write to Supabase
+  if (isOnlineAvailable()) {
+    try {
+      const { error: insertCircleErr } = await supabase
+        .from('circles')
+        .insert({
+          id: newId,
+          name: cleanName,
+          code,
+          description: cleanDesc,
+          keeper_id: keeperId,
+          keeper_name: cleanKeeper,
+          created_at: createdAt
+        })
+
+      if (insertCircleErr) throw insertCircleErr
+
+      const { error: insertMemberErr } = await supabase
+        .from('circle_members')
+        .insert({
+          id: keeperId,
+          circle_id: newId,
+          name: cleanKeeper,
+          role: 'keeper',
+          patronus_form: 'Silver Stag',
+          created_at: createdAt
+        })
+
+      if (insertMemberErr) throw insertMemberErr
+    } catch (err) {
+      console.warn('Failed to save circle online, storing locally:', err)
+    }
+  }
+
+  // Also cache locally
+  const circles = getLocalCircles()
   circles.unshift(newCircle)
-  saveCircles(circles)
+  saveLocalCircles(circles)
 
   return {
     circle: newCircle,
     currentUser: {
       id: keeperId,
-      name: keeperName.trim(),
+      name: cleanKeeper,
       role: 'keeper'
     }
   }
@@ -105,24 +216,17 @@ export function createCircle({ name, description = '', keeperName }) {
 /**
  * Join an existing Circle using a valid Circle Code
  */
-export function joinCircle({ code, wizardName }) {
+export async function joinCircle({ code, wizardName }) {
   if (!code?.trim()) throw new Error('Please enter a Circle Code.')
   if (!wizardName?.trim()) throw new Error('Your wizard name is required.')
 
-  const circle = getCircleByCode(code)
+  const circle = await getCircleByCode(code)
   if (!circle) {
     throw new Error('We could not find a Circle with that code. Please verify the code and try again.')
   }
 
   const cleanName = wizardName.trim()
-  const circles = getCircles()
-  const targetIndex = circles.findIndex(c => c.id === circle.id)
-
-  if (targetIndex === -1) {
-    throw new Error('Circle could not be located.')
-  }
-
-  const existingMember = circles[targetIndex].members.find(
+  const existingMember = circle.members?.find(
     m => m.name.toLowerCase() === cleanName.toLowerCase()
   )
 
@@ -138,12 +242,34 @@ export function joinCircle({ code, wizardName }) {
       patronus: 'Silver Light',
       online: true
     }
-    circles[targetIndex].members.push(user)
-    saveCircles(circles)
+
+    if (isOnlineAvailable()) {
+      try {
+        await supabase
+          .from('circle_members')
+          .insert({
+            id: newMemberId,
+            circle_id: circle.id,
+            name: cleanName,
+            role: 'member',
+            patronus_form: 'Silver Light'
+          })
+      } catch (err) {
+        console.warn('Could not sync joined member online:', err)
+      }
+    }
+
+    circle.members.push(user)
+    const local = getLocalCircles()
+    const idx = local.findIndex(c => c.id === circle.id)
+    if (idx !== -1) {
+      local[idx] = circle
+      saveLocalCircles(local)
+    }
   }
 
   return {
-    circle: circles[targetIndex],
+    circle,
     currentUser: user
   }
 }

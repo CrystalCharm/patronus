@@ -11,7 +11,7 @@ export default function CreateCircleModal({ isOpen, onClose, onCircleCreated }) 
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -27,7 +27,7 @@ export default function CreateCircleModal({ isOpen, onClose, onCircleCreated }) 
 
     try {
       setIsSubmitting(true)
-      const { circle, currentUser } = createCircle({
+      const { circle, currentUser } = await createCircle({
         name: circleName,
         keeperName,
         description

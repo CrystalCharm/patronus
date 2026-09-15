@@ -1,22 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import LandingPage from './pages/LandingPage'
 import CircleDashboard from './pages/CircleDashboard'
 import CreateCircleModal from './components/circles/CreateCircleModal'
 import JoinCircleModal from './components/circles/JoinCircleModal'
-import { getCircles } from './services/circleService'
+import { getLocalCircles } from './services/circleService'
 import './App.css'
+
+// Ensure mock circles are seeded in localStorage on first load
+getLocalCircles()
 
 function App() {
   const [activeCircle, setActiveCircle] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
-
-  // Pre-seed and check storage on initial mount
-  useEffect(() => {
-    // Ensure circles are initialized in storage
-    getCircles()
-  }, [])
 
   const handleCircleCreated = (circle, user) => {
     setActiveCircle(circle)

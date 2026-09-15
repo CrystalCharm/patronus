@@ -10,7 +10,7 @@ export default function JoinCircleModal({ isOpen, onClose, onCircleJoined }) {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
@@ -26,7 +26,7 @@ export default function JoinCircleModal({ isOpen, onClose, onCircleJoined }) {
 
     try {
       setIsSubmitting(true)
-      const { circle, currentUser } = joinCircle({
+      const { circle, currentUser } = await joinCircle({
         code,
         wizardName
       })
