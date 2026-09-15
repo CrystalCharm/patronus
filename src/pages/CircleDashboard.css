@@ -1,0 +1,194 @@
+.circle-dashboard {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+  position: relative;
+}
+
+/* Top Navigation & Status Bar */
+.dashboard-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(11, 14, 23, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.875rem 1.25rem;
+}
+
+.dashboard-header__inner {
+  max-width: var(--max-width-desktop);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-header__back-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-header__back-btn:hover {
+  background: rgba(242, 189, 83, 0.1);
+  border-color: var(--gold-border-subtle);
+  color: var(--gold-hover);
+}
+
+.dashboard-header__titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header__circle-name {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.dashboard-header__desc {
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Copyable Code Badge */
+.circle-code-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(242, 189, 83, 0.08);
+  border: 1px solid var(--gold-border);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--gold-hover);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.circle-code-pill:hover {
+  background: rgba(242, 189, 83, 0.16);
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.circle-code-pill__copied {
+  color: #7ef5a0;
+}
+
+/* Dashboard Content Grid */
+.dashboard-layout {
+  max-width: var(--max-width-desktop);
+  width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+    gap: 1rem;
+  }
+}
+
+/* Chat Container */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 18, 28, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: calc(100vh - 160px);
+  position: relative;
+}
+
+.messages-scroll-area {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Thematic Empty State */
+.messages-empty-state {
+  margin: auto;
+  text-align: center;
+  max-width: 360px;
+  padding: 3rem 1.5rem;
+}
+
+.messages-empty-state__icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 12px var(--gold-glow));
+}
+
+.messages-empty-state__title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  color: var(--gold-hover);
+  margin-bottom: 0.5rem;
+}
+
+.messages-empty-state__text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Sidebar for desktop / collapsible for mobile */
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 80px;
+}
+
+@media (max-width: 860px) {
+  .dashboard-sidebar--collapsed {
+    display: none;
+  }
+}

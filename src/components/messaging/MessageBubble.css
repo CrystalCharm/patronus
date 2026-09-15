@@ -1,0 +1,75 @@
+.message-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+  animation: fade-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.message-row--outgoing {
+  align-items: flex-end;
+}
+
+.message-row--incoming {
+  align-items: flex-start;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 0 4px;
+}
+
+.message-sender {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-gold);
+  letter-spacing: 0.02em;
+}
+
+.message-sender--you {
+  color: #c0d8f8;
+}
+
+.message-time {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+}
+
+.message-bubble {
+  max-width: min(82%, 520px);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  position: relative;
+  word-break: break-word;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Incoming messages (parchment/celestial dark glass) */
+.message-bubble--incoming {
+  background: rgba(22, 28, 44, 0.9);
+  color: var(--text-primary);
+  border: 1px solid rgba(242, 189, 83, 0.2);
+  border-top-left-radius: 4px;
+}
+
+/* Outgoing messages (warm parchment / golden tint) */
+.message-bubble--outgoing {
+  background: linear-gradient(135deg, rgba(46, 38, 22, 0.95) 0%, rgba(32, 27, 16, 0.95) 100%);
+  color: #fff6e0;
+  border: 1px solid rgba(242, 189, 83, 0.4);
+  border-top-right-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 12px rgba(242, 189, 83, 0.12);
+}
+
+.message-bubble__sparkle {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 0.75rem;
+  color: var(--gold-hover);
+  filter: drop-shadow(0 0 4px var(--gold-glow));
+}

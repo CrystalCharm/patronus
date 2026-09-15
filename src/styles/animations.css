@@ -1,0 +1,88 @@
+/* Patronus Magical Micro-Animations */
+
+@keyframes gentle-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(242, 189, 83, 0.25));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(242, 189, 83, 0.45));
+  }
+}
+
+@keyframes celestial-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes patronus-cast {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 rgba(242, 189, 83, 0);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 24px rgba(242, 189, 83, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(242, 189, 83, 0.2);
+  }
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-float {
+  animation: celestial-float 6s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: gentle-glow 4s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

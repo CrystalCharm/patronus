@@ -1,0 +1,8 @@
+/* Main Patronus App container */
+.patronus-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-deep);
+}
