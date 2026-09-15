@@ -254,3 +254,117 @@
     display: none;
   }
 }
+
+/* PWA Install Pill */
+.pwa-install-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(242, 189, 83, 0.2), rgba(242, 189, 83, 0.08));
+  border: 1px solid var(--gold-border);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-gold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  animation: pulse 2s infinite;
+}
+
+.pwa-install-pill:hover {
+  background: rgba(242, 189, 83, 0.25);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+/* Floating In-App Patronus Alert Banner */
+.patronus-alert-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92%, 480px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+  animation: fade-slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.patronus-alert-banner--standard {
+  background: rgba(18, 24, 38, 0.95);
+  border: 1px solid var(--gold-border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(242, 189, 83, 0.25);
+}
+
+.patronus-alert-banner--howler {
+  background: rgba(45, 12, 16, 0.95);
+  border: 1px solid rgba(239, 68, 68, 0.7);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: howler-shake 0.4s ease-out;
+}
+
+.patronus-alert-banner--whisper {
+  background: rgba(26, 18, 42, 0.95);
+  border: 1px dashed rgba(168, 85, 247, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(168, 85, 247, 0.3);
+}
+
+.patronus-alert-banner--spell {
+  background: rgba(30, 26, 14, 0.95);
+  border: 1px solid rgba(251, 191, 36, 0.8);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(251, 191, 36, 0.4);
+}
+
+.patronus-alert-banner__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.patronus-alert-banner__title {
+  font-family: var(--font-serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-gold);
+}
+
+.patronus-alert-banner--howler .patronus-alert-banner__title {
+  color: #fca5a5;
+}
+
+.patronus-alert-banner--whisper .patronus-alert-banner__title {
+  color: #d8b4fe;
+}
+
+.patronus-alert-banner__body {
+  font-size: 0.875rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patronus-alert-banner__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.patronus-alert-banner__close:hover {
+  color: #fff;
+}
+

@@ -273,3 +273,72 @@ export async function joinCircle({ code, wizardName }) {
     currentUser: user
   }
 }
+
+/**
+ * Fetch all members of a circle
+ */
+export async function getCircleMembers(circleId) {
+  if (isOnlineAvailable()) {
+    try {
+      const { data, error } = await supabase
+        .from('circle_members')
+        .select('*')
+        .eq('circle_id', circleId)
+        .order('created_at', { ascending: true })
+
+      if (!error && data) {
+        return data.map(m => ({
+          id: m.id,
+          name: m.name,
+          role: m.role || 'member',
+          patronus: m.patronus_form || 'Silver Light'
+        }))
+      }
+    } catch (err) {
+      console.warn('Failed to fetch members online:', err)
+    }
+  }
+
+  const localCircles = getLocalCircles()
+  const circle = localCircles.find(c => c.id === circleId)
+  return circle?.members || []
+}
+
+/**
+ * Subscribe to live member roster updates for a circle
+ */
+export function subscribeToCircleMembers(circleId, onNewMember) {
+  if (!isOnlineAvailable() || !supabase) {
+    return () => {}
+  }
+
+  const channelName = `circle-members-${circleId}`
+  const channel = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'circle_members',
+        filter: `circle_id=eq.${circleId}`
+      },
+      (payload) => {
+        const raw = payload.new
+        if (raw) {
+          onNewMember({
+            id: raw.id,
+            name: raw.name,
+            role: raw.role || 'member',
+            patronus: raw.patronus_form || 'Silver Light'
+          })
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+

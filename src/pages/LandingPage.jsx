@@ -1,8 +1,18 @@
+import { useState, useEffect } from 'react'
 import PatronusButton from '../components/common/PatronusButton'
+import { pwaService } from '../services/pwaService'
 import '../styles/animations.css'
 import './LandingPage.css'
 
 export default function LandingPage({ onCreateCircle, onJoinCircle }) {
+  const [canInstall, setCanInstall] = useState(() => pwaService.canInstall())
+
+  useEffect(() => {
+    return pwaService.onInstallChange((installable) => {
+      setCanInstall(installable)
+    })
+  }, [])
+
   return (
     <div className="landing-page" id="patronus-landing">
       {/* Background Celestial Stars */}
@@ -32,14 +42,27 @@ export default function LandingPage({ onCreateCircle, onJoinCircle }) {
           <span>PATRONUS</span>
         </div>
 
-        <PatronusButton
-          variant="secondary"
-          size="sm"
-          id="btn-nav-join"
-          onClick={onJoinCircle}
-        >
-          Enter Code
-        </PatronusButton>
+        <div className="landing-nav__actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {canInstall && (
+            <PatronusButton
+              variant="secondary"
+              size="sm"
+              onClick={() => pwaService.promptInstall()}
+            >
+              <span>📲</span>
+              <span>Install App</span>
+            </PatronusButton>
+          )}
+
+          <PatronusButton
+            variant="secondary"
+            size="sm"
+            id="btn-nav-join"
+            onClick={onJoinCircle}
+          >
+            Enter Code
+          </PatronusButton>
+        </div>
       </header>
 
       {/* Main Hero Section */}

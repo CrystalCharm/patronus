@@ -4,39 +4,67 @@ import MessageComposer from '../components/messaging/MessageComposer'
 import MemberList from '../components/circles/MemberList'
 import PatronusButton from '../components/common/PatronusButton'
 import { getMessages, sendPatronus, subscribeToCircleMessages, subscribeToCirclePresence } from '../services/messageService'
+import { getCircleMembers, subscribeToCircleMembers } from '../services/circleService'
 import { isOnlineAvailable } from '../services/supabaseClient'
 import { notificationService } from '../services/notificationService'
+import { pwaService } from '../services/pwaService'
 import './CircleDashboard.css'
 
 export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) {
   const [messages, setMessages] = useState([])
+  const [members, setMembers] = useState(circle?.members || [])
   const [isLoading, setIsLoading] = useState(true)
   const [showMembers, setShowMembers] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [onlineUserIds, setOnlineUserIds] = useState(new Set())
   const [permission, setPermission] = useState(() => notificationService.getPermission())
+  const [activeAlert, setActiveAlert] = useState(null)
+  const [canInstall, setCanInstall] = useState(() => pwaService.canInstall())
   const messagesEndRef = useRef(null)
+  const alertTimeoutRef = useRef(null)
   const isOnline = isOnlineAvailable()
 
-  // Load messages on mount (async-compatible)
+  // In-app floating toast alert
+  const showPatronusAlert = useCallback((alertData) => {
+    if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current)
+    setActiveAlert(alertData)
+    alertTimeoutRef.current = setTimeout(() => {
+      setActiveAlert(null)
+    }, 4500)
+  }, [])
+
+  // Listen for PWA installability
+  useEffect(() => {
+    return pwaService.onInstallChange((installable) => {
+      setCanInstall(installable)
+    })
+  }, [])
+
+  // Load messages and members on mount
   useEffect(() => {
     let cancelled = false
 
-    async function loadMessages() {
+    async function loadData() {
       if (!circle) return
       try {
-        const initial = await getMessages(circle.id)
+        const [initialMsgs, initialMembers] = await Promise.all([
+          getMessages(circle.id),
+          getCircleMembers(circle.id)
+        ])
         if (!cancelled) {
-          setMessages(initial)
+          setMessages(initialMsgs)
+          if (initialMembers.length > 0) {
+            setMembers(initialMembers)
+          }
           setIsLoading(false)
         }
       } catch (err) {
-        console.error('Failed to load messages:', err)
+        console.error('Failed to load circle data:', err)
         if (!cancelled) setIsLoading(false)
       }
     }
 
-    loadMessages()
+    loadData()
     return () => { cancelled = true }
   }, [circle])
 
@@ -46,19 +74,44 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
 
     const unsubscribe = subscribeToCircleMessages(circle.id, (newMsg) => {
       setMessages((prev) => {
-        // Prevent duplicates (from own send or double delivery)
         if (prev.some(m => m.id === newMsg.id)) return prev
         return [...prev, newMsg]
       })
 
-      // Sensory feedback & notification for incoming messages from others
+      // Sensory feedback & in-app alert for messages from others
       if (newMsg.senderId !== currentUser?.id) {
         notificationService.notifyIncomingPatronus(newMsg)
+        showPatronusAlert({
+          title: newMsg.type === 'howler' ? '⚡ HOWLER ALERT' : newMsg.type === 'whisper' ? '🌙 WHISPER RECEIVED' : newMsg.type === 'spell' ? '🪄 SPELL CAST' : '✨ PATRONUS ARRIVED',
+          body: `${newMsg.senderName}: "${newMsg.content}"`,
+          type: newMsg.type || 'standard'
+        })
       }
     })
 
     return unsubscribe
-  }, [circle, isOnline, currentUser])
+  }, [circle, isOnline, currentUser, showPatronusAlert])
+
+  // Subscribe to real-time new members joining
+  useEffect(() => {
+    if (!circle || !isOnline) return
+
+    const unsubscribe = subscribeToCircleMembers(circle.id, (newMember) => {
+      setMembers((prev) => {
+        if (prev.some(m => m.id === newMember.id || m.name.toLowerCase() === newMember.name.toLowerCase())) {
+          return prev
+        }
+        showPatronusAlert({
+          title: '✨ NEW WIZARD ARRIVED',
+          body: `${newMember.name} has entered the Circle`,
+          type: 'standard'
+        })
+        return [...prev, newMember]
+      })
+    })
+
+    return unsubscribe
+  }, [circle, isOnline, showPatronusAlert])
 
   // Subscribe to presence tracking
   useEffect(() => {
@@ -135,8 +188,8 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     }
   }
 
-  // Enrich members with online presence
-  const enrichedMembers = (circle.members || []).map(m => ({
+  // Enrich members with dynamic state and online presence
+  const enrichedMembers = (members || []).map(m => ({
     ...m,
     online: onlineUserIds.has(m.id) || m.id === currentUser?.id
   }))
@@ -174,6 +227,18 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
                 <><span className="connection-dot connection-dot--offline"></span> Local</>
               )}
             </span>
+
+            {canInstall && (
+              <button
+                type="button"
+                className="pwa-install-pill"
+                onClick={() => pwaService.promptInstall()}
+                title="Install Patronus to Home Screen"
+              >
+                <span aria-hidden="true">📲</span>
+                <span>Install</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -213,7 +278,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
               onClick={() => setShowMembers(!showMembers)}
               aria-expanded={showMembers}
             >
-              <span>{circle.members?.length || 1} Members</span>
+              <span>{members.length || 1} Members</span>
               <span aria-hidden="true">{showMembers ? '▴' : '▾'}</span>
             </PatronusButton>
           </div>
@@ -224,6 +289,34 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
       <div className="dashboard-layout">
         {/* Chat / Messaging Section */}
         <main className="chat-container">
+          {/* Floating In-App Patronus Alert Banner */}
+          {activeAlert && (
+            <div
+              className={`patronus-alert-banner patronus-alert-banner--${activeAlert.type || 'standard'}`}
+              onClick={() => {
+                setActiveAlert(null)
+                scrollToBottom(true)
+              }}
+              role="alert"
+            >
+              <div className="patronus-alert-banner__content">
+                <span className="patronus-alert-banner__title">{activeAlert.title}</span>
+                <span className="patronus-alert-banner__body">{activeAlert.body}</span>
+              </div>
+              <button
+                type="button"
+                className="patronus-alert-banner__close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveAlert(null)
+                }}
+                aria-label="Dismiss alert"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           <div className="messages-scroll-area">
             {isLoading ? (
               <div className="messages-empty-state">
