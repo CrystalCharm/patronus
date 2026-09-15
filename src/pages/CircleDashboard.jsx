@@ -8,6 +8,7 @@ import { getCircleMembers, subscribeToCircleMembers } from '../services/circleSe
 import { isOnlineAvailable } from '../services/supabaseClient'
 import { notificationService } from '../services/notificationService'
 import { pwaService } from '../services/pwaService'
+import SpellbookModal from '../components/settings/SpellbookModal'
 import './CircleDashboard.css'
 
 export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) {
@@ -21,6 +22,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   const [permission, setPermission] = useState(() => notificationService.getPermission())
   const [activeAlert, setActiveAlert] = useState(null)
   const [canInstall, setCanInstall] = useState(() => pwaService.canInstall())
+  const [isSpellbookOpen, setIsSpellbookOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const alertTimeoutRef = useRef(null)
   const isOnline = isOnlineAvailable()
@@ -92,22 +94,28 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     return unsubscribe
   }, [circle, isOnline, currentUser, showPatronusAlert])
 
-  // Subscribe to real-time new members joining
+  // Subscribe to real-time member events (joins and profile updates)
   useEffect(() => {
     if (!circle || !isOnline) return
 
-    const unsubscribe = subscribeToCircleMembers(circle.id, (newMember) => {
-      setMembers((prev) => {
-        if (prev.some(m => m.id === newMember.id || m.name.toLowerCase() === newMember.name.toLowerCase())) {
-          return prev
-        }
-        showPatronusAlert({
-          title: '✨ NEW WIZARD ARRIVED',
-          body: `${newMember.name} has entered the Circle`,
-          type: 'standard'
+    const unsubscribe = subscribeToCircleMembers(circle.id, ({ eventType, member }) => {
+      if (eventType === 'UPDATE') {
+        setMembers((prev) =>
+          prev.map((m) => (m.id === member.id ? { ...m, ...member } : m))
+        )
+      } else {
+        setMembers((prev) => {
+          if (prev.some((m) => m.id === member.id || m.name.toLowerCase() === member.name.toLowerCase())) {
+            return prev.map((m) => (m.id === member.id ? { ...m, ...member } : m))
+          }
+          showPatronusAlert({
+            title: '✨ NEW WIZARD ARRIVED',
+            body: `${member.name} has entered the Circle`,
+            type: 'standard'
+          })
+          return [...prev, member]
         })
-        return [...prev, newMember]
-      })
+      }
     })
 
     return unsubscribe
@@ -195,8 +203,17 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     }
   }
 
+  const handleUpdateUserPatronus = (newPatronus) => {
+    if (currentUser) {
+      currentUser.patronus = newPatronus
+    }
+    setMembers((prev) =>
+      prev.map((m) => (m.id === currentUser?.id ? { ...m, patronus: newPatronus } : m))
+    )
+  }
+
   // Enrich members with dynamic state and online presence
-  const enrichedMembers = (members || []).map(m => ({
+  const enrichedMembers = (members || []).map((m) => ({
     ...m,
     online: onlineUserIds.has(m.id) || m.id === currentUser?.id
   }))
@@ -260,6 +277,17 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
               ) : (
                 <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>📋</span>
               )}
+            </button>
+
+            <button
+              type="button"
+              className="spellbook-trigger-btn"
+              onClick={() => setIsSpellbookOpen(true)}
+              title="Open Spellbook (Profile & Settings)"
+              aria-label="Open Spellbook"
+            >
+              <span aria-hidden="true">📖</span>
+              <span className="spellbook-trigger-btn__text">Spellbook</span>
             </button>
 
             <button
@@ -374,6 +402,16 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
           />
         </aside>
       </div>
+
+      {/* Spellbook (Settings & Wizard Profile Modal) */}
+      <SpellbookModal
+        isOpen={isSpellbookOpen}
+        onClose={() => setIsSpellbookOpen(false)}
+        currentUser={currentUser}
+        circle={circle}
+        onLeaveCircle={onLeaveCircle}
+        onUpdateUserPatronus={handleUpdateUserPatronus}
+      />
     </div>
   )
 }

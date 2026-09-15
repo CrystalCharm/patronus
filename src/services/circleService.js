@@ -307,18 +307,18 @@ export async function getCircleMembers(circleId) {
 /**
  * Subscribe to live member roster updates for a circle
  */
-export function subscribeToCircleMembers(circleId, onNewMember) {
+export function subscribeToCircleMembers(circleId, onMemberEvent) {
   if (!isOnlineAvailable() || !supabase) {
     return () => {}
   }
 
-  const channelName = `circle-members-${circleId}`
+  const channelName = `circle-members-${circleId}-${Math.random().toString(36).slice(2, 6)}`
   const channel = supabase
     .channel(channelName)
     .on(
       'postgres_changes',
       {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'circle_members',
         filter: `circle_id=eq.${circleId}`
@@ -326,11 +326,14 @@ export function subscribeToCircleMembers(circleId, onNewMember) {
       (payload) => {
         const raw = payload.new
         if (raw) {
-          onNewMember({
-            id: raw.id,
-            name: raw.name,
-            role: raw.role || 'member',
-            patronus: raw.patronus_form || 'Silver Light'
+          onMemberEvent({
+            eventType: payload.eventType,
+            member: {
+              id: raw.id,
+              name: raw.name,
+              role: raw.role || 'member',
+              patronus: raw.patronus_form || 'Silver Light'
+            }
           })
         }
       }
@@ -341,4 +344,33 @@ export function subscribeToCircleMembers(circleId, onNewMember) {
     supabase.removeChannel(channel)
   }
 }
+
+/**
+ * Update member's chosen Patronus animal form in Supabase and local cache
+ */
+export async function updateMemberPatronus(memberId, circleId, patronusForm) {
+  if (isOnlineAvailable()) {
+    try {
+      const { error } = await supabase
+        .from('circle_members')
+        .update({ patronus_form: patronusForm })
+        .eq('id', memberId)
+
+      if (error) throw error
+    } catch (err) {
+      console.warn('Failed to update patronus in Supabase:', err)
+    }
+  }
+
+  const local = getLocalCircles()
+  const circle = local.find((c) => c.id === circleId)
+  if (circle && circle.members) {
+    const member = circle.members.find((m) => m.id === memberId)
+    if (member) {
+      member.patronus = patronusForm
+      saveLocalCircles(local)
+    }
+  }
+}
+
 

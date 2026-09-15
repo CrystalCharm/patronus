@@ -3,9 +3,55 @@
  * Handles audio chimes (Web Audio API), haptic vibration, and system notifications.
  */
 
+const PREFS_KEY = 'patronus_sensory_prefs'
+
 class NotificationService {
   constructor() {
     this.audioCtx = null
+    this.soundEnabled = true
+    this.hapticsEnabled = true
+    this.listeners = new Set()
+    this.loadPrefs()
+  }
+
+  loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (typeof parsed.sound === 'boolean') this.soundEnabled = parsed.sound
+        if (typeof parsed.haptics === 'boolean') this.hapticsEnabled = parsed.haptics
+      }
+    } catch {}
+  }
+
+  savePrefs() {
+    try {
+      localStorage.setItem(
+        PREFS_KEY,
+        JSON.stringify({
+          sound: this.soundEnabled,
+          haptics: this.hapticsEnabled
+        })
+      )
+      this.listeners.forEach((cb) => cb({ sound: this.soundEnabled, haptics: this.hapticsEnabled }))
+    } catch {}
+  }
+
+  onPrefsChange(callback) {
+    this.listeners.add(callback)
+    callback({ sound: this.soundEnabled, haptics: this.hapticsEnabled })
+    return () => this.listeners.delete(callback)
+  }
+
+  setSoundEnabled(val) {
+    this.soundEnabled = Boolean(val)
+    this.savePrefs()
+  }
+
+  setHapticsEnabled(val) {
+    this.hapticsEnabled = Boolean(val)
+    this.savePrefs()
   }
 
   /**
@@ -62,7 +108,9 @@ class NotificationService {
   /**
    * Synthesize a magical audio chime without requiring external sound files
    */
-  playMagicalChime(type = 'standard') {
+  playMagicalChime(type = 'standard', force = false) {
+    if (!force && !this.soundEnabled) return
+
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return
@@ -136,8 +184,9 @@ class NotificationService {
   /**
    * Device haptic vibration patterns with graceful fallback
    */
-  triggerVibration(type = 'standard') {
+  triggerVibration(type = 'standard', force = false) {
     if (!this.isVibrationSupported()) return
+    if (!force && !this.hapticsEnabled) return
 
     try {
       if (type === 'howler') {

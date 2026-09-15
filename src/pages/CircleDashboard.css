@@ -170,6 +170,30 @@
   box-shadow: 0 0 10px rgba(242, 189, 83, 0.2);
 }
 
+/* Spellbook Trigger Button */
+.spellbook-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--gold-border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-gold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.spellbook-trigger-btn:hover {
+  background: rgba(242, 189, 83, 0.14);
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 12px rgba(242, 189, 83, 0.25);
+  transform: translateY(-1px);
+}
+
+
 
 /* Dashboard Content Grid */
 .dashboard-layout {
