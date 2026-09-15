@@ -18,24 +18,27 @@ export default function MessageComposer({ onSendPatronus, disabled }) {
 
   const activeTypeMeta = MESSAGE_TYPES.find(t => t.id === selectedType) || MESSAGE_TYPES[0]
 
-  const handleCast = () => {
+  const handleCast = async () => {
     if (!content.trim() || disabled || isCasting) return
 
+    const trimmed = content.trim()
     setIsCasting(true)
 
-    // Sensory feedback for casting
-    notificationService.playMagicalChime(selectedType)
-    notificationService.triggerVibration(selectedType)
+    try {
+      // Sensory feedback for casting
+      notificationService.playMagicalChime(selectedType)
+      notificationService.triggerVibration(selectedType)
 
-    onSendPatronus(content.trim(), selectedType)
-    setContent('')
-
-    setTimeout(() => {
+      await onSendPatronus(trimmed, selectedType)
+      setContent('')
+    } catch (err) {
+      console.error('Failed to cast message:', err)
+    } finally {
       setIsCasting(false)
       if (inputRef.current) {
         inputRef.current.focus()
       }
-    }, 450)
+    }
   }
 
   const handleKeyDown = (e) => {

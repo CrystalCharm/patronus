@@ -36,38 +36,37 @@ function saveLocalMessage(newMsg) {
 }
 
 /**
- * Get all messages for a given circle (hybrid online/offline)
+ * Get all messages for a given circle (live Supabase query with local fallback)
  */
 export async function getMessages(circleId) {
   if (isOnlineAvailable()) {
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('circle_id', circleId)
-        .order('created_at', { ascending: true })
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('circle_id', circleId)
+      .order('created_at', { ascending: true })
 
-      if (!error && data) {
-        return data.map(m => ({
-          id: m.id,
-          circleId: m.circle_id,
-          senderId: m.sender_id,
-          senderName: m.sender_name,
-          content: m.content,
-          type: m.message_type || 'standard',
-          createdAt: m.created_at
-        }))
-      }
-    } catch (err) {
-      console.warn('Could not fetch messages from Supabase, using local fallback:', err)
+    if (error) {
+      console.error('Supabase getMessages error:', error)
+      throw new Error(error.message || 'Could not retrieve Patronuses from the ether.')
     }
+
+    return (data || []).map(m => ({
+      id: m.id,
+      circleId: m.circle_id,
+      senderId: m.sender_id,
+      senderName: m.sender_name,
+      content: m.content,
+      type: m.message_type || 'standard',
+      createdAt: m.created_at
+    }))
   }
 
   return getLocalMessages(circleId)
 }
 
 /**
- * Cast a new Patronus message
+ * Cast a new Patronus message and persist directly to Supabase
  */
 export async function sendPatronus({ circleId, senderId, senderName, content, type = 'standard' }) {
   if (!content?.trim()) {
@@ -75,10 +74,44 @@ export async function sendPatronus({ circleId, senderId, senderName, content, ty
   }
 
   const cleanContent = content.trim()
-  const newId = `msg-${Date.now()}`
+  const newId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
   const createdAt = new Date().toISOString()
 
-  const newMsg = {
+  // If online, insert and persist directly to Supabase
+  if (isOnlineAvailable()) {
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        id: newId,
+        circle_id: circleId,
+        sender_id: senderId,
+        sender_name: senderName,
+        content: cleanContent,
+        message_type: type,
+        created_at: createdAt
+      })
+
+    if (error) {
+      console.error('Failed to insert message into Supabase:', error)
+      throw new Error(error.message || 'The Patronus could not be delivered. Please try again.')
+    }
+
+    const newMsg = {
+      id: newId,
+      circleId,
+      senderId,
+      senderName,
+      content: cleanContent,
+      type,
+      createdAt
+    }
+
+    saveLocalMessage(newMsg)
+    return newMsg
+  }
+
+  // Offline fallback
+  const localMsg = {
     id: newId,
     circleId,
     senderId,
@@ -87,34 +120,8 @@ export async function sendPatronus({ circleId, senderId, senderName, content, ty
     type,
     createdAt
   }
-
-  // If online, broadcast to Supabase
-  if (isOnlineAvailable()) {
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          id: newId,
-          circle_id: circleId,
-          sender_id: senderId,
-          sender_name: senderName,
-          content: cleanContent,
-          message_type: type,
-          created_at: createdAt
-        })
-
-      if (error) {
-        console.warn('Failed to insert message into Supabase:', error)
-      }
-    } catch (err) {
-      console.warn('Online cast failed, saving locally:', err)
-    }
-  }
-
-  // Always cache locally
-  saveLocalMessage(newMsg)
-
-  return newMsg
+  saveLocalMessage(localMsg)
+  return localMsg
 }
 
 /**

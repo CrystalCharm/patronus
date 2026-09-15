@@ -14,6 +14,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   const [messages, setMessages] = useState([])
   const [members, setMembers] = useState(circle?.members || [])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [showMembers, setShowMembers] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [onlineUserIds, setOnlineUserIds] = useState(new Set())
@@ -40,33 +41,32 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
     })
   }, [])
 
+  // Function to load/reload data from Supabase
+  const loadCircleData = useCallback(async () => {
+    if (!circle) return
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const [initialMsgs, initialMembers] = await Promise.all([
+        getMessages(circle.id),
+        getCircleMembers(circle.id)
+      ])
+      setMessages(initialMsgs)
+      if (initialMembers.length > 0) {
+        setMembers(initialMembers)
+      }
+    } catch (err) {
+      console.error('Failed to load circle data:', err)
+      setLoadError(err.message || 'The Patronus could not be retrieved. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [circle])
+
   // Load messages and members on mount
   useEffect(() => {
-    let cancelled = false
-
-    async function loadData() {
-      if (!circle) return
-      try {
-        const [initialMsgs, initialMembers] = await Promise.all([
-          getMessages(circle.id),
-          getCircleMembers(circle.id)
-        ])
-        if (!cancelled) {
-          setMessages(initialMsgs)
-          if (initialMembers.length > 0) {
-            setMembers(initialMembers)
-          }
-          setIsLoading(false)
-        }
-      } catch (err) {
-        console.error('Failed to load circle data:', err)
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-
-    loadData()
-    return () => { cancelled = true }
-  }, [circle])
+    loadCircleData()
+  }, [loadCircleData])
 
   // Subscribe to real-time incoming Patronuses
   useEffect(() => {
@@ -153,10 +153,17 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
       })
       setMessages((prev) => {
         if (prev.some(m => m.id === newMsg.id)) return prev
-        return [...prev, newMsg]
+        const updated = [...prev, newMsg]
+        return updated.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
       })
     } catch (err) {
       console.error('Failed to cast message:', err)
+      showPatronusAlert({
+        title: '⚠️ DELIVERY FAILED',
+        body: err.message || 'The Patronus could not be delivered. Please try again.',
+        type: 'howler'
+      })
+      throw err
     }
   }
 
@@ -320,12 +327,24 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
           <div className="messages-scroll-area">
             {isLoading ? (
               <div className="messages-empty-state">
-                <div className="messages-empty-state__icon" aria-hidden="true">✨</div>
-                <h2 className="messages-empty-state__title">Summoning your Circle...</h2>
+                <div className="messages-empty-state__icon animate-float" aria-hidden="true">🦉</div>
+                <h2 className="messages-empty-state__title">Receiving Owl Post...</h2>
+                <p className="messages-empty-state__text">Fetching messages from the ether...</p>
+              </div>
+            ) : loadError ? (
+              <div className="messages-empty-state">
+                <div className="messages-empty-state__icon" aria-hidden="true">⚠️</div>
+                <h2 className="messages-empty-state__title">The Owl Post was delayed</h2>
+                <p className="messages-empty-state__text">{loadError}</p>
+                <div style={{ marginTop: '1rem' }}>
+                  <PatronusButton size="sm" variant="secondary" onClick={loadCircleData}>
+                    Try Again ↺
+                  </PatronusButton>
+                </div>
               </div>
             ) : messages.length === 0 ? (
               <div className="messages-empty-state">
-                <div className="messages-empty-state__icon" aria-hidden="true">🦉</div>
+                <div className="messages-empty-state__icon" aria-hidden="true">🕊️</div>
                 <h2 className="messages-empty-state__title">No Patronuses have arrived yet</h2>
                 <p className="messages-empty-state__text">
                   Your Circle is waiting for its first message. Cast a thought to break the silence!
