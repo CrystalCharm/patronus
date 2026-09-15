@@ -21,6 +21,11 @@ export const supabase = isConfigured
     })
   : null
 
+if (!isConfigured && typeof window !== 'undefined') {
+  console.info('Patronus: Operating in local parchment mode. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your hosting environment settings to connect to the live Ether.')
+}
+
 export function isOnlineAvailable() {
   return isConfigured
 }
+
