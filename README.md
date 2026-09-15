@@ -6,7 +6,7 @@
 
 A real-time magical messaging web app where messages are Patronuses,<br>groups are Circles, and every notification feels like an enchantment.
 
-[Live Demo](https://patronus-crystalcharm.vercel.app) · [Report Bug](https://github.com/CrystalCharm/patronus/issues)
+[Live Demo](patronus-one.vercel.app) · [Report Bug](https://github.com/CrystalCharm/patronus/issues)
 
 </div>
 
