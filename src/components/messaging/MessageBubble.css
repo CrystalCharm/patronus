@@ -73,3 +73,83 @@
   color: var(--gold-hover);
   filter: drop-shadow(0 0 4px var(--gold-glow));
 }
+
+/* --- Message Type Badges --- */
+.message-type-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.message-type-badge--howler {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.message-type-badge--whisper {
+  background: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.message-type-badge--spell {
+  background: rgba(242, 189, 83, 0.2);
+  color: var(--text-gold);
+  border: 1px solid rgba(242, 189, 83, 0.4);
+}
+
+/* --- Type: Howler (Urgent, glowing crimson) --- */
+.message-bubble--howler {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  animation: howler-shake 0.45s ease-out;
+}
+
+.message-bubble--incoming.message-bubble--howler {
+  background: rgba(45, 14, 18, 0.95);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+
+.message-bubble--outgoing.message-bubble--howler {
+  background: linear-gradient(135deg, rgba(65, 18, 22, 0.95) 0%, rgba(45, 12, 15, 0.95) 100%);
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+}
+
+/* --- Type: Whisper (Subtle, soft celestial violet) --- */
+.message-bubble--whisper {
+  border-style: dashed !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+}
+
+.message-content--whisper {
+  font-style: italic;
+  opacity: 0.92;
+}
+
+.message-bubble--incoming.message-bubble--whisper {
+  background: rgba(28, 20, 44, 0.88);
+  box-shadow: 0 2px 12px rgba(168, 85, 247, 0.15);
+}
+
+.message-bubble--outgoing.message-bubble--whisper {
+  background: linear-gradient(135deg, rgba(48, 25, 68, 0.92) 0%, rgba(30, 16, 45, 0.92) 100%);
+  box-shadow: 0 2px 14px rgba(168, 85, 247, 0.2);
+}
+
+/* --- Type: Spell (Incantation, shimmering celestial gold) --- */
+.message-bubble--spell {
+  border-color: rgba(242, 189, 83, 0.7) !important;
+  animation: spell-pulse 3s infinite ease-in-out;
+}
+
+.message-bubble--incoming.message-bubble--spell {
+  background: rgba(25, 28, 20, 0.95);
+}
+
+.message-bubble--outgoing.message-bubble--spell {
+  background: linear-gradient(135deg, rgba(58, 48, 16, 0.95) 0%, rgba(38, 30, 10, 0.95) 100%);
+}
+

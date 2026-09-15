@@ -1,17 +1,33 @@
 import { useState, useRef } from 'react'
 import PatronusButton from '../common/PatronusButton'
+import { notificationService } from '../../services/notificationService'
 import './MessageComposer.css'
+
+const MESSAGE_TYPES = [
+  { id: 'standard', label: 'Patronus', icon: '✨', placeholder: 'Write a Patronus...' },
+  { id: 'howler', label: 'Howler', icon: '⚡', placeholder: 'Write an urgent Howler...' },
+  { id: 'whisper', label: 'Whisper', icon: '🌙', placeholder: 'Whisper a subtle secret...' },
+  { id: 'spell', label: 'Spell', icon: '🪄', placeholder: 'Cast an incantation...' },
+]
 
 export default function MessageComposer({ onSendPatronus, disabled }) {
   const [content, setContent] = useState('')
+  const [selectedType, setSelectedType] = useState('standard')
   const [isCasting, setIsCasting] = useState(false)
   const inputRef = useRef(null)
+
+  const activeTypeMeta = MESSAGE_TYPES.find(t => t.id === selectedType) || MESSAGE_TYPES[0]
 
   const handleCast = () => {
     if (!content.trim() || disabled || isCasting) return
 
     setIsCasting(true)
-    onSendPatronus(content.trim())
+
+    // Sensory feedback for casting
+    notificationService.playMagicalChime(selectedType)
+    notificationService.triggerVibration(selectedType)
+
+    onSendPatronus(content.trim(), selectedType)
     setContent('')
 
     setTimeout(() => {
@@ -31,17 +47,40 @@ export default function MessageComposer({ onSendPatronus, disabled }) {
 
   return (
     <div className="message-composer-wrapper">
-      <div className={`message-composer ${isCasting ? 'message-composer--casting' : ''}`}>
+      {/* Magical Message Type Selector */}
+      <div className="message-type-bar" role="radiogroup" aria-label="Select Patronus Type">
+        {MESSAGE_TYPES.map((type) => {
+          const isActive = selectedType === type.id
+          return (
+            <button
+              key={type.id}
+              type="button"
+              className={`message-type-tab ${isActive ? `message-type-tab--active message-type-tab--${type.id}` : ''}`}
+              onClick={() => {
+                setSelectedType(type.id)
+                inputRef.current?.focus()
+              }}
+              aria-checked={isActive}
+              role="radio"
+            >
+              <span className="message-type-tab__icon">{type.icon}</span>
+              <span className="message-type-tab__label">{type.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className={`message-composer ${isCasting ? 'message-composer--casting' : ''} message-composer--${selectedType}`}>
         <textarea
           ref={inputRef}
           className="message-composer__input"
-          placeholder="Write a Patronus..."
+          placeholder={activeTypeMeta.placeholder}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
           disabled={disabled}
-          aria-label="Write a Patronus"
+          aria-label={activeTypeMeta.placeholder}
         />
 
         <div className="message-composer__cast-btn">
@@ -50,13 +89,14 @@ export default function MessageComposer({ onSendPatronus, disabled }) {
             size="sm"
             onClick={handleCast}
             disabled={!content.trim() || disabled || isCasting}
-            aria-label="Cast Patronus"
+            aria-label={`Cast ${activeTypeMeta.label}`}
           >
             <span>CAST</span>
-            <span aria-hidden="true">✨</span>
+            <span aria-hidden="true">{activeTypeMeta.icon}</span>
           </PatronusButton>
         </div>
       </div>
     </div>
   )
 }
+

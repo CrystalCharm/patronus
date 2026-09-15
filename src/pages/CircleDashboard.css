@@ -138,6 +138,39 @@
   color: #7ef5a0;
 }
 
+/* Notification Alert Toggle Button */
+.notification-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.notification-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.notification-toggle-btn--active {
+  background: rgba(242, 189, 83, 0.12);
+  border-color: rgba(242, 189, 83, 0.35);
+  color: var(--text-gold);
+}
+
+.notification-toggle-btn--active:hover {
+  box-shadow: 0 0 10px rgba(242, 189, 83, 0.2);
+}
+
+
 /* Dashboard Content Grid */
 .dashboard-layout {
   max-width: var(--max-width-desktop);

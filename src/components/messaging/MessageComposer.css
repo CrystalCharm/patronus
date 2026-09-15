@@ -57,3 +57,89 @@
 .message-composer--casting {
   animation: patronus-cast 0.6s ease-out;
 }
+
+/* --- Message Type Selector Bar --- */
+.message-type-bar {
+  max-width: var(--max-width-app);
+  margin: 0 auto 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.message-type-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.message-type-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.message-type-tab:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-primary);
+}
+
+.message-type-tab--active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.message-type-tab--standard.message-type-tab--active {
+  background: rgba(242, 189, 83, 0.15);
+  border-color: rgba(242, 189, 83, 0.5);
+  color: var(--text-gold);
+  box-shadow: 0 0 10px rgba(242, 189, 83, 0.2);
+}
+
+.message-type-tab--howler.message-type-tab--active {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+
+.message-type-tab--whisper.message-type-tab--active {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.message-type-tab--spell.message-type-tab--active {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fef08a;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Border accents on composer based on selected type */
+.message-composer--howler:focus-within {
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.3);
+}
+
+.message-composer--whisper:focus-within {
+  border-color: rgba(168, 85, 247, 0.8);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(168, 85, 247, 0.25);
+}
+
+.message-composer--spell:focus-within {
+  border-color: rgba(251, 191, 36, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(251, 191, 36, 0.35);
+}
+

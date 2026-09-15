@@ -5,6 +5,7 @@ import MemberList from '../components/circles/MemberList'
 import PatronusButton from '../components/common/PatronusButton'
 import { getMessages, sendPatronus, subscribeToCircleMessages, subscribeToCirclePresence } from '../services/messageService'
 import { isOnlineAvailable } from '../services/supabaseClient'
+import { notificationService } from '../services/notificationService'
 import './CircleDashboard.css'
 
 export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) {
@@ -13,6 +14,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   const [showMembers, setShowMembers] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [onlineUserIds, setOnlineUserIds] = useState(new Set())
+  const [permission, setPermission] = useState(() => notificationService.getPermission())
   const messagesEndRef = useRef(null)
   const isOnline = isOnlineAvailable()
 
@@ -48,10 +50,15 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
         if (prev.some(m => m.id === newMsg.id)) return prev
         return [...prev, newMsg]
       })
+
+      // Sensory feedback & notification for incoming messages from others
+      if (newMsg.senderId !== currentUser?.id) {
+        notificationService.notifyIncomingPatronus(newMsg)
+      }
     })
 
     return unsubscribe
-  }, [circle, isOnline])
+  }, [circle, isOnline, currentUser])
 
   // Subscribe to presence tracking
   useEffect(() => {
@@ -80,7 +87,7 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
   }, [messages, isLoading, scrollToBottom])
 
   // Handle message casting
-  const handleSendPatronus = async (content) => {
+  const handleSendPatronus = async (content, type = 'standard') => {
     if (!content.trim() || !circle || !currentUser) return
 
     try {
@@ -88,7 +95,8 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
         circleId: circle.id,
         senderId: currentUser.id,
         senderName: currentUser.name,
-        content
+        content,
+        type
       })
       setMessages((prev) => {
         if (prev.some(m => m.id === newMsg.id)) return prev
@@ -96,6 +104,20 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
       })
     } catch (err) {
       console.error('Failed to cast message:', err)
+    }
+  }
+
+  // Handle requesting notification permissions
+  const handleToggleNotifications = async () => {
+    if (permission !== 'granted') {
+      const granted = await notificationService.requestPermission()
+      setPermission(granted ? 'granted' : 'denied')
+      if (granted) {
+        notificationService.playMagicalChime('standard')
+      }
+    } else {
+      // Test chime when already enabled
+      notificationService.playMagicalChime('spell')
     }
   }
 
@@ -166,6 +188,23 @@ export default function CircleDashboard({ circle, currentUser, onLeaveCircle }) 
               ) : (
                 <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>📋</span>
               )}
+            </button>
+
+            <button
+              type="button"
+              className={`notification-toggle-btn ${permission === 'granted' ? 'notification-toggle-btn--active' : ''}`}
+              onClick={handleToggleNotifications}
+              title={
+                permission === 'granted'
+                  ? 'Patronus Alerts active (click to chime)'
+                  : 'Enable Patronus Alert notifications'
+              }
+              aria-label="Patronus Alerts"
+            >
+              <span aria-hidden="true">{permission === 'granted' ? '🔔' : '🔕'}</span>
+              <span className="notification-toggle-btn__text">
+                {permission === 'granted' ? 'Alerts On' : 'Alerts'}
+              </span>
             </button>
 
             <PatronusButton

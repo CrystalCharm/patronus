@@ -1,0 +1,19 @@
+{
+  "name": "Patronus — Send a Little Magic",
+  "short_name": "Patronus",
+  "description": "Magical messaging and notification web application for couples and close friends.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e17",
+  "theme_color": "#0b0e17",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "lifestyle", "messaging"]
+}

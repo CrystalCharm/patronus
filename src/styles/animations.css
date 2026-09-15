@@ -86,3 +86,19 @@
 .animate-fade-up {
   animation: fade-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes howler-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px) rotate(-0.5deg); }
+  40%, 80% { transform: translateX(3px) rotate(0.5deg); }
+}
+
+@keyframes spell-pulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(242, 189, 83, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(242, 189, 83, 0.6), 0 0 8px rgba(255, 255, 255, 0.5);
+  }
+}
+
